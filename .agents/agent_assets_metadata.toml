@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "-xY0ods7Vxpp2yt0AUQ4n"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "intern training app icon"
