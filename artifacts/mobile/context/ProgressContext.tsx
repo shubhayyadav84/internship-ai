@@ -1,6 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { SECTIONS } from "@/data/courses";
+import { useAuth } from "@/context/AuthContext";
+import { apiGetProgress, apiMarkVideoWatched, apiSubmitQuiz } from "@/services/api";
+import type { SectionProgressData } from "@/services/api";
 
 export interface SectionProgress {
   watchedVideos: string[];
@@ -12,6 +14,7 @@ export interface SectionProgress {
 
 interface ProgressContextType {
   progress: Record<string, SectionProgress>;
+  isLoaded: boolean;
   markVideoWatched: (sectionId: string, videoId: string) => Promise<void>;
   isVideoWatched: (sectionId: string, videoId: string) => boolean;
   areAllVideosWatched: (sectionId: string) => boolean;
@@ -19,57 +22,71 @@ interface ProgressContextType {
   hasCertificate: (sectionId: string) => boolean;
   getOverallProgress: () => number;
   resetSectionProgress: (sectionId: string) => Promise<void>;
+  refreshProgress: () => Promise<void>;
 }
 
 const ProgressContext = createContext<ProgressContextType | null>(null);
-
-const PROGRESS_KEY = "@intern_progress";
 const PASS_THRESHOLD = 0.6;
 
-function defaultSectionProgress(): SectionProgress {
-  return {
-    watchedVideos: [],
-    quizScore: null,
-    quizPassed: false,
-    certificateEarned: false,
-    certificateDate: null,
-  };
+function defaultSection(): SectionProgress {
+  return { watchedVideos: [], quizScore: null, quizPassed: false, certificateEarned: false, certificateDate: null };
+}
+
+function mapSections(sections: SectionProgressData[]): Record<string, SectionProgress> {
+  const map: Record<string, SectionProgress> = {};
+  for (const s of sections) {
+    map[s.sectionId] = {
+      watchedVideos: s.watchedVideos,
+      quizScore: s.quizScore,
+      quizPassed: s.quizPassed,
+      certificateEarned: s.certificateEarned,
+      certificateDate: s.certificateDate,
+    };
+  }
+  return map;
 }
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {
+  const { token } = useAuth();
   const [progress, setProgress] = useState<Record<string, SectionProgress>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    loadProgress();
-  }, []);
+    if (token) {
+      void loadProgress();
+    } else {
+      setProgress({});
+      setIsLoaded(true);
+    }
+  }, [token]);
 
   async function loadProgress() {
     try {
-      const raw = await AsyncStorage.getItem(PROGRESS_KEY);
-      if (raw) setProgress(JSON.parse(raw));
-    } catch {}
-  }
-
-  async function saveProgress(updated: Record<string, SectionProgress>) {
-    setProgress(updated);
-    await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
+      const result = await apiGetProgress(token!);
+      if (result.data) {
+        setProgress(mapSections(result.data.sections));
+      }
+    } catch {
+    } finally {
+      setIsLoaded(true);
+    }
   }
 
   function getSection(sectionId: string): SectionProgress {
-    return progress[sectionId] ?? defaultSectionProgress();
+    return progress[sectionId] ?? defaultSection();
   }
 
   async function markVideoWatched(sectionId: string, videoId: string) {
-    const section = getSection(sectionId);
-    if (section.watchedVideos.includes(videoId)) return;
-    const updated = {
-      ...progress,
-      [sectionId]: {
-        ...section,
-        watchedVideos: [...section.watchedVideos, videoId],
-      },
-    };
-    await saveProgress(updated);
+    if (!token) return;
+    if (getSection(sectionId).watchedVideos.includes(videoId)) return;
+
+    setProgress((prev) => ({
+      ...prev,
+      [sectionId]: { ...(prev[sectionId] ?? defaultSection()), watchedVideos: [...(prev[sectionId]?.watchedVideos ?? []), videoId] },
+    }));
+
+    const result = await apiMarkVideoWatched(token, videoId, sectionId);
+    if (result.data) setProgress(mapSections(result.data.sections));
   }
 
   function isVideoWatched(sectionId: string, videoId: string): boolean {
@@ -84,19 +101,22 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function submitQuiz(sectionId: string, score: number, total: number) {
-    const section = getSection(sectionId);
+    if (!token) return;
     const passed = score / total >= PASS_THRESHOLD;
-    const updated = {
-      ...progress,
+
+    setProgress((prev) => ({
+      ...prev,
       [sectionId]: {
-        ...section,
+        ...(prev[sectionId] ?? defaultSection()),
         quizScore: score,
         quizPassed: passed,
         certificateEarned: passed,
-        certificateDate: passed ? new Date().toISOString() : section.certificateDate,
+        certificateDate: passed ? new Date().toISOString() : (prev[sectionId]?.certificateDate ?? null),
       },
-    };
-    await saveProgress(updated);
+    }));
+
+    const result = await apiSubmitQuiz(token, sectionId, score, total);
+    if (result.data) setProgress(mapSections(result.data.sections));
   }
 
   function hasCertificate(sectionId: string): boolean {
@@ -116,14 +136,18 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function resetSectionProgress(sectionId: string) {
-    const updated = { ...progress, [sectionId]: defaultSectionProgress() };
-    await saveProgress(updated);
+    setProgress((prev) => ({ ...prev, [sectionId]: defaultSection() }));
+  }
+
+  async function refreshProgress() {
+    if (token) await loadProgress();
   }
 
   return (
     <ProgressContext.Provider
       value={{
         progress,
+        isLoaded,
         markVideoWatched,
         isVideoWatched,
         areAllVideosWatched,
@@ -131,6 +155,7 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
         hasCertificate,
         getOverallProgress,
         resetSectionProgress,
+        refreshProgress,
       }}
     >
       {children}

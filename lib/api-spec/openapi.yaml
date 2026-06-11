@@ -3,28 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: InternTrain API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
-paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
+  - name: auth
+    description: Student authentication
+  - name: students
+    description: Student progress and certificates
+  - name: admin
+    description: Admin operations
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +33,464 @@ components:
       required:
         - status
 
+    # Auth
+    StudentRegistration:
+      type: object
+      required: [name, email, password, studentId]
+      properties:
+        name: { type: string }
+        email: { type: string }
+        password: { type: string }
+        studentId: { type: string }
+
+    StudentLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    AdminLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, student]
+      properties:
+        token: { type: string }
+        student:
+          $ref: "#/components/schemas/StudentProfile"
+
+    AdminAuthResponse:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+
+    StudentProfile:
+      type: object
+      required: [id, name, email, studentId, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        studentId: { type: string }
+        createdAt: { type: string }
+
+    # Progress
+    VideoWatched:
+      type: object
+      required: [videoId, sectionId]
+      properties:
+        videoId: { type: string }
+        sectionId: { type: string }
+
+    QuizSubmission:
+      type: object
+      required: [sectionId, score, total]
+      properties:
+        sectionId: { type: string }
+        score: { type: integer }
+        total: { type: integer }
+
+    SectionProgress:
+      type: object
+      required: [sectionId, watchedVideos, quizScore, quizPassed, certificateEarned, certificateDate]
+      properties:
+        sectionId: { type: string }
+        watchedVideos: { type: array, items: { type: string } }
+        quizScore: { type: ["integer", "null"] }
+        quizPassed: { type: boolean }
+        certificateEarned: { type: boolean }
+        certificateDate: { type: ["string", "null"] }
+
+    StudentProgress:
+      type: object
+      required: [sections]
+      properties:
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionProgress"
+
+    Certificate:
+      type: object
+      required: [id, sectionId, awardedAt]
+      properties:
+        id: { type: integer }
+        sectionId: { type: string }
+        awardedAt: { type: string }
+
+    # Admin
+    AdminStats:
+      type: object
+      required: [totalStudents, totalVideosWatched, totalQuizzesPassed, totalCertificates, completionRate, sectionStats]
+      properties:
+        totalStudents: { type: integer }
+        totalVideosWatched: { type: integer }
+        totalQuizzesPassed: { type: integer }
+        totalCertificates: { type: integer }
+        completionRate: { type: number }
+        sectionStats:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionStat"
+
+    SectionStat:
+      type: object
+      required: [sectionId, title, studentsStarted, studentsCompleted, avgScore]
+      properties:
+        sectionId: { type: string }
+        title: { type: string }
+        studentsStarted: { type: integer }
+        studentsCompleted: { type: integer }
+        avgScore: { type: number }
+
+    AdminStudent:
+      type: object
+      required: [id, name, email, studentId, createdAt, progress]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        studentId: { type: string }
+        createdAt: { type: string }
+        progress:
+          $ref: "#/components/schemas/StudentProgress"
+
+    AdminCertificate:
+      type: object
+      required: [id, sectionId, awardedAt, student]
+      properties:
+        id: { type: integer }
+        sectionId: { type: string }
+        awardedAt: { type: string }
+        student:
+          $ref: "#/components/schemas/StudentProfile"
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # --- Student Auth ---
+  /auth/register:
+    post:
+      operationId: registerStudent
+      tags: [auth]
+      summary: Register a new student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentRegistration"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  /auth/login:
+    post:
+      operationId: loginStudent
+      tags: [auth]
+      summary: Student login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentLogin"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  # --- Student Progress ---
+  /students/me/progress:
+    get:
+      operationId: getMyProgress
+      tags: [students]
+      summary: Get my progress
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  /students/me/progress/video:
+    post:
+      operationId: markVideoWatched
+      tags: [students]
+      summary: Mark a video as watched
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoWatched"
+      responses:
+        "200":
+          description: Marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  /students/me/quiz:
+    post:
+      operationId: submitQuiz
+      tags: [students]
+      summary: Submit quiz result
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmission"
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProgress"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  /students/me/certificates:
+    get:
+      operationId: getMyCertificates
+      tags: [students]
+      summary: Get my certificates
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Certificate"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  # --- Admin Auth ---
+  /admin/auth/login:
+    post:
+      operationId: loginAdmin
+      tags: [admin]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLogin"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuthResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  # --- Admin Operations ---
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Admin dashboard stats
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+
+  /admin/students:
+    get:
+      operationId: listAdminStudents
+      tags: [admin]
+      summary: List all students with progress
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Students list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminStudent"
+
+  /admin/students/{id}:
+    get:
+      operationId: getAdminStudent
+      tags: [admin]
+      summary: Get student detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Student detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStudent"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+    delete:
+      operationId: deleteAdminStudent
+      tags: [admin]
+      summary: Delete a student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string }
+                required: [error]
+
+  /admin/certificates:
+    get:
+      operationId: listAdminCertificates
+      tags: [admin]
+      summary: List all certificates
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Certificates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminCertificate"

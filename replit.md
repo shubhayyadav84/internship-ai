@@ -1,6 +1,6 @@
-# [Project name]
+# InternTrain
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+An intern safety training platform with a mobile app for trainees and a web admin panel for supervisors. Trainees watch video courses, take MCQ quizzes, and earn certificates across three modules (AAWS, Brake System, Control System). Admins monitor student progress, view completions, and track certificates.
 
 ## Run & Operate
 
@@ -9,28 +9,45 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — JWT signing secret
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- API: Express 5 (port 8080, path `/api`)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
+- Mobile: Expo (React Native) — path `/mobile`
+- Admin: React + Vite + shadcn/ui — path `/admin/`
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — source of truth for all API contracts
+- `lib/db/src/schema/` — Drizzle table definitions (students, admins, progress, quiz_results, certificates)
+- `artifacts/api-server/src/routes/` — Express route handlers
+- `artifacts/mobile/` — Expo mobile app
+- `artifacts/admin/` — React-Vite admin panel
+- `lib/api-client-react/src/generated/api.ts` — generated React Query hooks
+- `lib/api-zod/src/generated/api.ts` — generated Zod validation schemas
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- JWT auth using SESSION_SECRET env var; 30-day expiry. Mobile stores token in AsyncStorage, admin stores in localStorage.
+- All student progress is server-side (PostgreSQL), not just AsyncStorage. Mobile contexts do optimistic updates then sync from API.
+- Default admin credentials seeded on first boot: admin@interntrain.com / admin123
+- Pass threshold for quiz certificates: 60% (3/5 correct)
+- Section IDs are canonical strings: "aaws", "brake", "control"
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Mobile (Expo):** Login/signup with server auth → home screen with 3 training sections → video player (YouTube via WebBrowser) → MCQ quiz → certificate screen → profile tab
+- **Admin (React-Vite):** Login → dashboard stats → students list with progress → student detail → certificates list
+
+## Default credentials
+
+- Admin: admin@interntrain.com / admin123
 
 ## User preferences
 
@@ -38,7 +55,10 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Always run `pnpm run typecheck:libs` before checking artifact packages if you change `lib/*`
+- After changing `lib/api-spec/openapi.yaml`, run `pnpm --filter @workspace/api-spec run codegen` (this also runs typecheck:libs)
+- `req.params.id` in Express 5 is typed as `string | string[]` — cast with `req.params["id"] as string`
+- Never use console.log in server code — use `req.log` in route handlers and `logger` singleton elsewhere
 
 ## Pointers
 
