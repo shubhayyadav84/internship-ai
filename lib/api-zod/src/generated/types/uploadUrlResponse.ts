@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetMyCertificates401 = {
-  error: string;
-};
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}

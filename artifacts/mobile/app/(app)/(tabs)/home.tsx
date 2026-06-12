@@ -1,11 +1,13 @@
 import { useAuth } from "@/context/AuthContext";
+import { useContent } from "@/context/ContentContext";
 import { useProgress } from "@/context/ProgressContext";
-import { SECTIONS } from "@/data/courses";
 import { useColors } from "@/hooks/useColors";
+import { type SectionData } from "@/services/api";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,7 +24,7 @@ function SectionCard({
   quizPassed,
   hasCert,
 }: {
-  section: (typeof SECTIONS)[0];
+  section: SectionData;
   watchedCount: number;
   totalVideos: number;
   quizPassed: boolean;
@@ -268,6 +270,12 @@ const styles = (colors: ReturnType<typeof useColors>) =>
       fontSize: 11,
       fontFamily: "Inter_500Medium",
     },
+    loadingWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: 60,
+    },
   });
 
 export default function HomeScreen() {
@@ -275,9 +283,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { progress, getOverallProgress } = useProgress();
-  const overallPct = getOverallProgress();
+  const { sections, isLoaded } = useContent();
+  const overallPct = getOverallProgress(sections);
   const s = styles(colors);
-
   const firstName = user?.name?.split(" ")[0] ?? "Intern";
 
   return (
@@ -306,22 +314,29 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
         <Text style={s.sectionLabel}>Training Modules</Text>
-        {SECTIONS.map((section) => {
-          const p = progress[section.id];
-          const watchedCount = p?.watchedVideos?.length ?? 0;
-          const quizPassed = p?.quizPassed ?? false;
-          const hasCert = p?.certificateEarned ?? false;
-          return (
-            <SectionCard
-              key={section.id}
-              section={section}
-              watchedCount={watchedCount}
-              totalVideos={section.videos.length}
-              quizPassed={quizPassed}
-              hasCert={hasCert}
-            />
-          );
-        })}
+
+        {!isLoaded ? (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator color={colors.primary} />
+          </View>
+        ) : (
+          sections.map((section) => {
+            const p = progress[section.id];
+            const watchedCount = p?.watchedVideos?.length ?? 0;
+            const quizPassed = p?.quizPassed ?? false;
+            const hasCert = p?.certificateEarned ?? false;
+            return (
+              <SectionCard
+                key={section.id}
+                section={section}
+                watchedCount={watchedCount}
+                totalVideos={section.videos.length}
+                quizPassed={quizPassed}
+                hasCert={hasCert}
+              />
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );

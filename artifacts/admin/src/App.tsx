@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Students from "@/pages/students";
 import StudentDetail from "@/pages/student-detail";
 import Certificates from "@/pages/certificates";
+import Content from "@/pages/content";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -66,6 +67,9 @@ function Router() {
       </Route>
       <Route path="/certificates">
         <ProtectedRoute component={Certificates} />
+      </Route>
+      <Route path="/content">
+        <ProtectedRoute component={Content} />
       </Route>
       <Route path="/" component={() => null} />
       <Route component={NotFound} />

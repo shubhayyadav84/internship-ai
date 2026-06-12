@@ -1,10 +1,11 @@
+import { useContent } from "@/context/ContentContext";
 import { useProgress } from "@/context/ProgressContext";
-import { getSectionById } from "@/data/courses";
 import { useColors } from "@/hooks/useColors";
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,20 +19,21 @@ export default function SectionScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { getSectionById } = useContent();
   const section = getSectionById(id);
   const { progress, areAllVideosWatched } = useProgress();
 
   if (!section) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>Section not found.</Text>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
 
   const sectionProgress = progress[section.id];
   const watchedVideos = sectionProgress?.watchedVideos ?? [];
-  const allWatched = areAllVideosWatched(section.id);
+  const allWatched = areAllVideosWatched(section.id, section.videos.length);
   const quizPassed = sectionProgress?.quizPassed ?? false;
   const quizScore = sectionProgress?.quizScore ?? null;
   const hasCert = sectionProgress?.certificateEarned ?? false;
@@ -208,6 +210,19 @@ export default function SectionScreen() {
       fontFamily: "Inter_600SemiBold",
       color: "#FFFFFF",
     },
+    noVideosBox: {
+      backgroundColor: colors.muted,
+      borderRadius: colors.radius,
+      padding: 18,
+      alignItems: "center",
+      gap: 8,
+    },
+    noVideosText: {
+      fontSize: 13,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+      textAlign: "center",
+    },
   });
 
   return (
@@ -229,45 +244,56 @@ export default function SectionScreen() {
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionLabel}>Course Videos</Text>
 
-        {section.videos.map((video, index) => {
-          const watched = watchedVideos.includes(video.id);
-          return (
-            <TouchableOpacity
-              key={video.id}
-              style={styles.videoCard}
-              onPress={() => router.push(`/(app)/video/${video.id}?sectionId=${section.id}`)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.videoNumWrap}>
-                <Text style={styles.videoNum}>{String(index + 1).padStart(2, "0")}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
-                <Text style={styles.videoDuration}>
-                  <Feather name="clock" size={11} color={colors.mutedForeground} /> {video.duration}
-                </Text>
-              </View>
-              {watched ? (
-                <View style={styles.videoWatchedBadge}>
-                  <Feather name="check" size={13} color={colors.success} />
+        {section.videos.length === 0 ? (
+          <View style={styles.noVideosBox}>
+            <Feather name="video-off" size={24} color={colors.mutedForeground} />
+            <Text style={styles.noVideosText}>No videos uploaded yet for this section.</Text>
+          </View>
+        ) : (
+          section.videos.map((video, index) => {
+            const watched = watchedVideos.includes(video.id);
+            return (
+              <TouchableOpacity
+                key={video.id}
+                style={styles.videoCard}
+                onPress={() => router.push(`/(app)/video/${video.id}?sectionId=${section.id}`)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.videoNumWrap}>
+                  <Text style={styles.videoNum}>{String(index + 1).padStart(2, "0")}</Text>
                 </View>
-              ) : (
-                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>
+                  {video.duration ? (
+                    <Text style={styles.videoDuration}>
+                      <Feather name="clock" size={11} color={colors.mutedForeground} /> {video.duration}
+                    </Text>
+                  ) : null}
+                </View>
+                {watched ? (
+                  <View style={styles.videoWatchedBadge}>
+                    <Feather name="check" size={13} color={colors.success} />
+                  </View>
+                ) : (
+                  <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+                )}
+              </TouchableOpacity>
+            );
+          })
+        )}
 
         <Text style={[styles.sectionLabel, { marginTop: 20 }]}>Assessment</Text>
 
-        {!allWatched ? (
+        {section.quiz.length === 0 || !allWatched ? (
           <View style={[styles.quizCard, styles.quizCardLocked]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Feather name="lock" size={16} color={colors.mutedForeground} />
               <Text style={[styles.quizTitle, { color: colors.mutedForeground }]}>MCQ Test Locked</Text>
             </View>
             <Text style={[styles.quizDesc, { color: colors.mutedForeground }]}>
-              Watch all {section.videos.length} videos in this section to unlock the MCQ test.
+              {section.videos.length === 0
+                ? "No videos are available for this section yet."
+                : `Watch all ${section.videos.length} videos in this section to unlock the MCQ test.`}
             </Text>
           </View>
         ) : (

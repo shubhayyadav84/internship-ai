@@ -1,12 +1,12 @@
 import { useProgress } from "@/context/ProgressContext";
-import { getSectionById } from "@/data/courses";
+import { useContent } from "@/context/ContentContext";
 import { useColors } from "@/hooks/useColors";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Animated,
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -22,22 +22,26 @@ export default function QuizScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { sectionId } = useLocalSearchParams<{ sectionId: string }>();
+  const { getSectionById } = useContent();
   const section = getSectionById(sectionId);
   const { submitQuiz } = useProgress();
 
   const [phase, setPhase] = useState<Phase>("quiz");
   const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() =>
-    section ? new Array(section.quiz.length).fill(null) : []
-  );
-  const [showResult, setShowResult] = useState(false);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [score, setScore] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!section) {
+  useEffect(() => {
+    if (section && answers.length !== section.quiz.length) {
+      setAnswers(new Array(section.quiz.length).fill(null));
+    }
+  }, [section]);
+
+  if (!section || answers.length === 0) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <Text style={{ color: colors.mutedForeground }}>Section not found.</Text>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }

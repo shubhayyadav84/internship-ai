@@ -108,43 +108,63 @@ export interface AdminCertificate {
   student: StudentProfile;
 }
 
-export type RegisterStudent400 = {
-  error: string;
-};
+export interface VideoItem {
+  id: string;
+  sectionId: string;
+  title: string;
+  description: string;
+  videoUrl: string;
+  duration: string;
+  sortOrder: number;
+}
 
-export type RegisterStudent409 = {
-  error: string;
-};
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
 
-export type LoginStudent401 = {
-  error: string;
-};
+export interface Section {
+  id: string;
+  title: string;
+  fullTitle: string;
+  description: string;
+  color: string;
+  iconName: string;
+  sortOrder: number;
+  videos: VideoItem[];
+  quiz: QuizQuestion[];
+}
 
-export type GetMyProgress401 = {
-  error: string;
-};
+export interface AddVideoRequest {
+  sectionId: string;
+  title: string;
+  description?: string;
+  videoUrl: string;
+  duration?: string;
+}
 
-export type MarkVideoWatched401 = {
-  error: string;
-};
+export interface UpdateVideoRequest {
+  title?: string;
+  description?: string;
+  videoUrl?: string;
+  duration?: string;
+}
 
-export type SubmitQuiz401 = {
-  error: string;
-};
+export interface UploadUrlRequest {
+  name: string;
+  size: number;
+  contentType: string;
+}
 
-export type GetMyCertificates401 = {
-  error: string;
-};
+export interface UploadUrlResponse {
+  uploadURL: string;
+  objectPath: string;
+}
 
-export type LoginAdmin401 = {
+export interface ErrorEnvelope {
   error: string;
-};
-
-export type GetAdminStudent404 = {
-  error: string;
-};
-
-export type DeleteAdminStudent404 = {
-  error: string;
-};
+}
 

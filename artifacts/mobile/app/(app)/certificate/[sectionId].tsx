@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
+import { useContent } from "@/context/ContentContext";
 import { useProgress } from "@/context/ProgressContext";
-import { getSectionById } from "@/data/courses";
 import { useColors } from "@/hooks/useColors";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -21,6 +21,7 @@ export default function CertificateScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { sectionId } = useLocalSearchParams<{ sectionId: string }>();
+  const { getSectionById } = useContent();
   const section = getSectionById(sectionId);
   const { user } = useAuth();
   const { progress } = useProgress();

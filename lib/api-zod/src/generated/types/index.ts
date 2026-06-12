@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addVideoRequest';
 export * from './adminAuthResponse';
 export * from './adminCertificate';
 export * from './adminLogin';
@@ -13,22 +14,19 @@ export * from './adminStats';
 export * from './adminStudent';
 export * from './authResponse';
 export * from './certificate';
-export * from './deleteAdminStudent404';
-export * from './getAdminStudent404';
-export * from './getMyCertificates401';
-export * from './getMyProgress401';
+export * from './errorEnvelope';
 export * from './healthStatus';
-export * from './loginAdmin401';
-export * from './loginStudent401';
-export * from './markVideoWatched401';
+export * from './quizQuestion';
 export * from './quizSubmission';
-export * from './registerStudent400';
-export * from './registerStudent409';
+export * from './section';
 export * from './sectionProgress';
 export * from './sectionStat';
 export * from './studentLogin';
 export * from './studentProfile';
 export * from './studentProgress';
 export * from './studentRegistration';
-export * from './submitQuiz401';
+export * from './updateVideoRequest';
+export * from './uploadUrlRequest';
+export * from './uploadUrlResponse';
+export * from './videoItem';
 export * from './videoWatched';

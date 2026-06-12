@@ -1,6 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
+import { useContent } from "@/context/ContentContext";
 import { useProgress } from "@/context/ProgressContext";
-import { SECTIONS } from "@/data/courses";
 import { useColors } from "@/hooks/useColors";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -22,14 +22,15 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { progress, getOverallProgress } = useProgress();
-  const overallPct = getOverallProgress();
+  const { sections } = useContent();
+  const overallPct = getOverallProgress(sections);
 
-  const totalVideos = SECTIONS.reduce((a, s) => a + s.videos.length, 0);
-  const watchedVideos = SECTIONS.reduce((a, s) => {
+  const totalVideos = sections.reduce((a, s) => a + s.videos.length, 0);
+  const watchedVideos = sections.reduce((a, s) => {
     return a + (progress[s.id]?.watchedVideos?.length ?? 0);
   }, 0);
-  const certsEarned = SECTIONS.filter((s) => progress[s.id]?.certificateEarned).length;
-  const quizPassed = SECTIONS.filter((s) => progress[s.id]?.quizPassed).length;
+  const certsEarned = sections.filter((s) => progress[s.id]?.certificateEarned).length;
+  const quizPassed = sections.filter((s) => progress[s.id]?.quizPassed).length;
 
   function handleLogout() {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -255,7 +256,7 @@ export default function ProfileScreen() {
     },
   });
 
-  const earnedSections = SECTIONS.filter((s) => progress[s.id]?.certificateEarned);
+  const earnedSections = sections.filter((s) => progress[s.id]?.certificateEarned);
 
   return (
     <View style={styles.container}>

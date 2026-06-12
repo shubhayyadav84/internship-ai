@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { SECTIONS } from "@/data/courses";
 import { useAuth } from "@/context/AuthContext";
 import { apiGetProgress, apiMarkVideoWatched, apiSubmitQuiz } from "@/services/api";
 import type { SectionProgressData } from "@/services/api";
@@ -17,10 +16,10 @@ interface ProgressContextType {
   isLoaded: boolean;
   markVideoWatched: (sectionId: string, videoId: string) => Promise<void>;
   isVideoWatched: (sectionId: string, videoId: string) => boolean;
-  areAllVideosWatched: (sectionId: string) => boolean;
+  areAllVideosWatched: (sectionId: string, videoCount: number) => boolean;
   submitQuiz: (sectionId: string, score: number, total: number) => Promise<void>;
   hasCertificate: (sectionId: string) => boolean;
-  getOverallProgress: () => number;
+  getOverallProgress: (sections: { id: string; videos: unknown[] }[]) => number;
   resetSectionProgress: (sectionId: string) => Promise<void>;
   refreshProgress: () => Promise<void>;
 }
@@ -93,11 +92,10 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     return getSection(sectionId).watchedVideos.includes(videoId);
   }
 
-  function areAllVideosWatched(sectionId: string): boolean {
-    const sec = SECTIONS.find((s) => s.id === sectionId);
-    if (!sec) return false;
+  function areAllVideosWatched(sectionId: string, videoCount: number): boolean {
+    if (videoCount === 0) return false;
     const watched = getSection(sectionId).watchedVideos;
-    return sec.videos.every((v) => watched.includes(v.id));
+    return watched.length >= videoCount;
   }
 
   async function submitQuiz(sectionId: string, score: number, total: number) {
@@ -123,10 +121,10 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     return getSection(sectionId).certificateEarned;
   }
 
-  function getOverallProgress(): number {
+  function getOverallProgress(sections: { id: string; videos: unknown[] }[]): number {
     let total = 0;
     let completed = 0;
-    for (const sec of SECTIONS) {
+    for (const sec of sections) {
       total += sec.videos.length + 1;
       const p = getSection(sec.id);
       completed += p.watchedVideos.length;

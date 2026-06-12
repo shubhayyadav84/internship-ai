@@ -221,3 +221,102 @@ export const ListAdminCertificatesResponseItem = zod.object({
 export const ListAdminCertificatesResponse = zod.array(ListAdminCertificatesResponseItem)
 
 
+/**
+ * @summary Add a video to a section
+ */
+export const AddVideoBody = zod.object({
+  "sectionId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "videoUrl": zod.string(),
+  "duration": zod.string().optional()
+})
+
+
+/**
+ * @summary Update a video
+ */
+export const UpdateVideoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateVideoBody = zod.object({
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "videoUrl": zod.string().optional(),
+  "duration": zod.string().optional()
+})
+
+export const UpdateVideoResponse = zod.object({
+  "id": zod.string(),
+  "sectionId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "videoUrl": zod.string(),
+  "duration": zod.string(),
+  "sortOrder": zod.number()
+})
+
+
+/**
+ * @summary Delete a video
+ */
+export const DeleteVideoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get all sections with videos and quiz questions
+ */
+export const GetSectionsResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "fullTitle": zod.string(),
+  "description": zod.string(),
+  "color": zod.string(),
+  "iconName": zod.string(),
+  "sortOrder": zod.number(),
+  "videos": zod.array(zod.object({
+  "id": zod.string(),
+  "sectionId": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "videoUrl": zod.string(),
+  "duration": zod.string(),
+  "sortOrder": zod.number()
+})),
+  "quiz": zod.array(zod.object({
+  "id": zod.string(),
+  "question": zod.string(),
+  "options": zod.array(zod.string()),
+  "correctIndex": zod.number(),
+  "explanation": zod.string()
+}))
+})
+export const GetSectionsResponse = zod.array(GetSectionsResponseItem)
+
+
+/**
+ * @summary Request a presigned URL for file upload
+ */
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string()
+})
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Serve an uploaded object
+ */
+export const GetObjectParams = zod.object({
+  "objectPath": zod.coerce.string()
+})
+
+

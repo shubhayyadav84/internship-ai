@@ -1,21 +1,14 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { adminsTable, studentsTable, videoProgressTable, quizResultsTable, certificatesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { adminsTable, studentsTable, videoProgressTable, quizResultsTable, certificatesTable, sectionsTable } from "@workspace/db";
+import { eq, asc } from "drizzle-orm";
 import { signToken } from "../lib/jwt";
 import { requireAdmin } from "../middlewares/auth";
 import { LoginAdminBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 
 const router = Router();
-
-const SECTION_IDS = ["aaws", "brake", "control"];
-const SECTION_TITLES: Record<string, string> = {
-  aaws: "AAWS",
-  brake: "Brake System",
-  control: "Control System",
-};
 
 async function seedAdminIfNeeded() {
   try {
@@ -31,14 +24,17 @@ async function seedAdminIfNeeded() {
 }
 seedAdminIfNeeded();
 
-async function buildStudentProgress(studentId: number) {
-  const [watched, quizzes, certs] = await Promise.all([
+async function buildStudentProgress(studentId: number, sectionIds?: string[]) {
+  const [watched, quizzes, certs, dbSections] = await Promise.all([
     db.select().from(videoProgressTable).where(eq(videoProgressTable.studentId, studentId)),
     db.select().from(quizResultsTable).where(eq(quizResultsTable.studentId, studentId)),
     db.select().from(certificatesTable).where(eq(certificatesTable.studentId, studentId)),
+    sectionIds
+      ? Promise.resolve(sectionIds.map((id) => ({ sectionId: id })))
+      : db.select({ sectionId: sectionsTable.sectionId }).from(sectionsTable).orderBy(asc(sectionsTable.sortOrder)),
   ]);
 
-  const sections = SECTION_IDS.map((sectionId) => {
+  const sections = dbSections.map(({ sectionId }) => {
     const sectionWatched = watched.filter((w) => w.sectionId === sectionId).map((w) => w.videoId);
     const latestQuiz = quizzes
       .filter((q) => q.sectionId === sectionId)
@@ -102,9 +98,15 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
     const totalVideosWatched = allWatched.length;
     const totalQuizzesPassed = allQuizzes.filter((q) => q.passed).length;
     const totalCertificates = allCerts.length;
-    const completionRate = totalStudents > 0 ? allCerts.length / (totalStudents * 3) : 0;
+    const sections = await db
+      .select({ sectionId: sectionsTable.sectionId, title: sectionsTable.title })
+      .from(sectionsTable)
+      .orderBy(asc(sectionsTable.sortOrder));
 
-    const sectionStats = SECTION_IDS.map((sectionId) => {
+    const numSections = Math.max(sections.length, 1);
+    const completionRate = totalStudents > 0 ? allCerts.length / (totalStudents * numSections) : 0;
+
+    const sectionStats = sections.map(({ sectionId, title }) => {
       const studentsStarted = new Set(allWatched.filter((w) => w.sectionId === sectionId).map((w) => w.studentId))
         .size;
       const studentsCompleted = new Set(allCerts.filter((c) => c.sectionId === sectionId).map((c) => c.studentId))
@@ -117,7 +119,7 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
 
       return {
         sectionId,
-        title: SECTION_TITLES[sectionId] ?? sectionId,
+        title,
         studentsStarted,
         studentsCompleted,
         avgScore: Math.round(avgScore * 10) / 10,

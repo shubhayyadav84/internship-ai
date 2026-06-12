@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LogOut, LayoutDashboard, Users, Award, ShieldCheck, Menu } from "lucide-react";
+import { LogOut, LayoutDashboard, Users, Award, ShieldCheck, Menu, BookOpen } from "lucide-react";
 import { clearToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -18,6 +18,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/students", label: "Students", icon: Users },
     { href: "/certificates", label: "Certificates", icon: Award },
+    { href: "/content", label: "Content", icon: BookOpen },
   ];
 
   const NavLinks = () => (

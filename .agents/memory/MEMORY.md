@@ -1,3 +1,5 @@
 - [InternTrain project setup](interntrain-setup.md) — full-stack: Expo mobile + React-Vite admin + Express API; JWT auth; section IDs are canonical strings
 - [Express 5 params typing](express5-params.md) — req.params values are typed as `string | string[]` in Express 5; cast with `req.params["id"] as string`
 - [Orval auth headers pattern](orval-auth-headers.md) — to pass auth headers with Orval hooks, use raw exported async functions with useQuery/useMutation manually
+- [shadcn toast import path](shadcn-toast.md) — admin toast hook lives at @/hooks/use-toast, NOT @/components/ui/use-toast
+- [objectStorage signed_url type](objectstorage-type.md) — response.json() is unknown; cast: (await response.json()) as { signed_url: string }

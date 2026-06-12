@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type LoginAdmin401 = {
-  error: string;
-};
+export interface UpdateVideoRequest {
+  title?: string;
+  description?: string;
+  videoUrl?: string;
+  duration?: string;
+}

@@ -16,6 +16,10 @@ tags:
     description: Student progress and certificates
   - name: admin
     description: Admin operations
+  - name: content
+    description: Course content (sections, videos, quiz)
+  - name: storage
+    description: Object storage upload and serving endpoints
 
 components:
   securitySchemes:
@@ -172,6 +176,91 @@ components:
         student:
           $ref: "#/components/schemas/StudentProfile"
 
+    # Content
+    VideoItem:
+      type: object
+      required: [id, sectionId, title, description, videoUrl, duration, sortOrder]
+      properties:
+        id: { type: string }
+        sectionId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        videoUrl: { type: string }
+        duration: { type: string }
+        sortOrder: { type: integer }
+
+    QuizQuestion:
+      type: object
+      required: [id, question, options, correctIndex, explanation]
+      properties:
+        id: { type: string }
+        question: { type: string }
+        options:
+          type: array
+          items: { type: string }
+        correctIndex: { type: integer }
+        explanation: { type: string }
+
+    Section:
+      type: object
+      required: [id, title, fullTitle, description, color, iconName, sortOrder, videos, quiz]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        fullTitle: { type: string }
+        description: { type: string }
+        color: { type: string }
+        iconName: { type: string }
+        sortOrder: { type: integer }
+        videos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoItem"
+        quiz:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizQuestion"
+
+    AddVideoRequest:
+      type: object
+      required: [sectionId, title, videoUrl]
+      properties:
+        sectionId: { type: string }
+        title: { type: string }
+        description: { type: string }
+        videoUrl: { type: string }
+        duration: { type: string }
+
+    UpdateVideoRequest:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        videoUrl: { type: string }
+        duration: { type: string }
+
+    # Storage
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string }
+        size: { type: integer }
+        contentType: { type: string }
+
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
 paths:
   /healthz:
     get:
@@ -210,19 +299,13 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           description: Email already exists
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /auth/login:
     post:
@@ -247,10 +330,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   # --- Student Progress ---
   /students/me/progress:
@@ -272,10 +352,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /students/me/progress/video:
     post:
@@ -302,10 +379,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /students/me/quiz:
     post:
@@ -332,10 +406,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /students/me/certificates:
     get:
@@ -358,10 +429,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   # --- Admin Auth ---
   /admin/auth/login:
@@ -387,10 +455,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   # --- Admin Operations ---
   /admin/stats:
@@ -449,10 +514,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
     delete:
       operationId: deleteAdminStudent
@@ -473,10 +535,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  error: { type: string }
-                required: [error]
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /admin/certificates:
     get:
@@ -494,3 +553,159 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/AdminCertificate"
+
+  # --- Admin Content ---
+  /admin/videos:
+    post:
+      operationId: addVideo
+      tags: [admin]
+      summary: Add a video to a section
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddVideoRequest"
+      responses:
+        "201":
+          description: Video created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoItem"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /admin/videos/{id}:
+    patch:
+      operationId: updateVideo
+      tags: [admin]
+      summary: Update a video
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVideoRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+    delete:
+      operationId: deleteVideo
+      tags: [admin]
+      summary: Delete a video
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # --- Content (Public) ---
+  /sections:
+    get:
+      operationId: getSections
+      tags: [content]
+      summary: Get all sections with videos and quiz questions
+      responses:
+        "200":
+          description: Sections list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Section"
+
+  # --- Storage ---
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getObject
+      tags: [storage]
+      summary: Serve an uploaded object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"

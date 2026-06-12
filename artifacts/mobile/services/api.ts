@@ -101,3 +101,33 @@ export function apiSubmitQuiz(
     body: JSON.stringify({ sectionId, score, total }),
   });
 }
+
+export interface SectionData {
+  id: string;
+  title: string;
+  fullTitle: string;
+  description: string;
+  color: string;
+  iconName: string;
+  sortOrder: number;
+  videos: {
+    id: string;
+    sectionId: string;
+    title: string;
+    description: string;
+    videoUrl: string;
+    duration: string;
+    sortOrder: number;
+  }[];
+  quiz: {
+    id: string;
+    question: string;
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  }[];
+}
+
+export function apiGetSections(): Promise<ApiResponse<SectionData[]>> {
+  return request<SectionData[]>("/sections");
+}

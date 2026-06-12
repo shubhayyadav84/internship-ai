@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type MarkVideoWatched401 = {
+export interface ErrorEnvelope {
   error: string;
-};
+}

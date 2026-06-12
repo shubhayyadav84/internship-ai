@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type DeleteAdminStudent404 = {
-  error: string;
-};
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
