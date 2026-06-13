@@ -260,7 +260,7 @@ export default function SectionScreen() {
                 activeOpacity={0.85}
               >
                 <View style={styles.videoNumWrap}>
-                  <Text style={styles.videoNum}>{String(index + 1).padStart(2, "0")}</Text>
+                  <Feather name="play" size={16} color={section.color} style={{ marginLeft: 2 }} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.videoTitle} numberOfLines={2}>{video.title}</Text>

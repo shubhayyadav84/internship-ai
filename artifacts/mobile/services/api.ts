@@ -1,4 +1,5 @@
-const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
+const isLocal = process.env.EXPO_PUBLIC_DOMAIN?.includes("localhost") || process.env.EXPO_PUBLIC_DOMAIN?.includes("127.0.0.1");
+const BASE_URL = `${isLocal ? "http" : "https"}://${process.env.EXPO_PUBLIC_DOMAIN}/api`;
 
 type ApiSuccess<T> = { data: T; error?: undefined };
 type ApiError = { data?: undefined; error: string };

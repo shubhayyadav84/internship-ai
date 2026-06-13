@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-type Phase = "quiz" | "result";
+type Phase = "quiz" | "result" | "review";
 
 export default function QuizScreen() {
   const colors = useColors();
@@ -51,7 +51,6 @@ export default function QuizScreen() {
   const PASS_SCORE = Math.ceil(totalQ * 0.6);
 
   function selectAnswer(index: number) {
-    if (answers[currentQ] !== null) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const updated = [...answers];
     updated[currentQ] = index;
@@ -212,6 +211,7 @@ export default function QuizScreen() {
       marginBottom: 16,
       flexDirection: "row",
       gap: 10,
+      marginTop: 10,
     },
     explanationText: {
       fontSize: 13,
@@ -316,6 +316,8 @@ export default function QuizScreen() {
       borderRadius: colors.radius,
       alignItems: "center",
       justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
     },
     resultPrimaryBtnText: {
       fontSize: 15,
@@ -340,7 +342,6 @@ export default function QuizScreen() {
   const LETTERS = ["A", "B", "C", "D"];
   const selectedAnswer = answers[currentQ];
   const hasAnswered = selectedAnswer !== null;
-  const isCorrect = hasAnswered && selectedAnswer === question.correctIndex;
 
   if (phase === "result") {
     return (
@@ -362,26 +363,27 @@ export default function QuizScreen() {
           </Text>
 
           <View style={styles.resultBtns}>
-            {passed ? (
+            {/* Always provide Review option first */}
+            <TouchableOpacity
+              style={[styles.resultPrimaryBtn, { backgroundColor: section.color }]}
+              onPress={() => {
+                setPhase("review");
+                setCurrentQ(0);
+              }}
+            >
+              <Feather name="eye" size={18} color="#FFFFFF" />
+              <Text style={styles.resultPrimaryBtnText}>Review Answers</Text>
+            </TouchableOpacity>
+
+            {passed && (
               <TouchableOpacity
                 style={[styles.resultPrimaryBtn, { backgroundColor: colors.accent }]}
                 onPress={() => {
                   router.replace(`/(app)/certificate/${sectionId}`);
                 }}
               >
+                <Feather name="award" size={18} color="#FFFFFF" />
                 <Text style={styles.resultPrimaryBtnText}>View Certificate</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.resultPrimaryBtn, { backgroundColor: section.color }]}
-                onPress={() => {
-                  setPhase("quiz");
-                  setCurrentQ(0);
-                  setAnswers(new Array(totalQ).fill(null));
-                  setScore(0);
-                }}
-              >
-                <Text style={styles.resultPrimaryBtnText}>Retry Quiz</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -400,10 +402,21 @@ export default function QuizScreen() {
     <View style={[styles.container, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 0) }]}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
-            <Feather name="x" size={20} color="#FFFFFF" />
+          <TouchableOpacity 
+            style={styles.closeBtn} 
+            onPress={() => {
+              if (phase === "review") {
+                setPhase("result");
+              } else {
+                router.back();
+              }
+            }}
+          >
+            <Feather name={phase === "review" ? "arrow-left" : "x"} size={20} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{section.title} — MCQ Test</Text>
+          <Text style={styles.headerTitle}>
+            {phase === "review" ? `Review — ${section.title}` : `${section.title} — MCQ Test`}
+          </Text>
         </View>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${((currentQ + 1) / totalQ) * 100}%` as any }]} />
@@ -420,8 +433,11 @@ export default function QuizScreen() {
         {question.options.map((opt, i) => {
           const isSelectedOpt = selectedAnswer === i;
           const isCorrectOpt = i === question.correctIndex;
-          const showCorrectState = hasAnswered && isCorrectOpt;
-          const showWrongState = hasAnswered && isSelectedOpt && !isCorrectOpt;
+          
+          // Show correct/wrong colors only in review mode!
+          const showCorrectState = phase === "review" && isCorrectOpt;
+          const showWrongState = phase === "review" && isSelectedOpt && !isCorrectOpt;
+          const highlightSelected = phase === "quiz" && isSelectedOpt;
 
           return (
             <TouchableOpacity
@@ -432,12 +448,12 @@ export default function QuizScreen() {
                   ? styles.optionCorrect
                   : showWrongState
                   ? styles.optionWrong
-                  : isSelectedOpt
+                  : highlightSelected
                   ? styles.optionSelected
                   : styles.optionDefault,
               ]}
-              onPress={() => selectAnswer(i)}
-              disabled={hasAnswered}
+              onPress={() => phase === "quiz" && selectAnswer(i)}
+              disabled={phase === "review"}
               activeOpacity={0.85}
             >
               <View
@@ -447,7 +463,7 @@ export default function QuizScreen() {
                     ? styles.optionLetterCorrect
                     : showWrongState
                     ? styles.optionLetterWrong
-                    : isSelectedOpt
+                    : highlightSelected
                     ? styles.optionLetterSelected
                     : {},
                 ]}
@@ -455,7 +471,7 @@ export default function QuizScreen() {
                 <Text
                   style={[
                     styles.optionLetterText,
-                    (showCorrectState || showWrongState || isSelectedOpt) && styles.optionLetterTextSelected,
+                    (showCorrectState || showWrongState || highlightSelected) && styles.optionLetterTextSelected,
                   ]}
                 >
                   {LETTERS[i]}
@@ -468,7 +484,7 @@ export default function QuizScreen() {
           );
         })}
 
-        {hasAnswered && (
+        {phase === "review" && (
           <View style={styles.explanationBox}>
             <Feather name="info" size={16} color="#1E40AF" />
             <Text style={styles.explanationText}>{question.explanation}</Text>
@@ -485,47 +501,84 @@ export default function QuizScreen() {
             <Text style={[styles.navBtnText, { color: colors.mutedForeground }]}>Prev</Text>
           </TouchableOpacity>
 
-          {currentQ === totalQ - 1 ? (
-            <TouchableOpacity
-              style={[styles.submitBtn, !allAnswered && { opacity: 0.5 }]}
-              onPress={handleSubmit}
-              disabled={!allAnswered || submitting}
-            >
-              <Feather name="send" size={16} color="#FFFFFF" />
-              <Text style={styles.submitBtnText}>Submit</Text>
-            </TouchableOpacity>
+          {phase === "review" ? (
+            // Review navigation controls
+            currentQ === totalQ - 1 ? (
+              <TouchableOpacity
+                style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+                onPress={() => setPhase("result")}
+              >
+                <Feather name="check" size={16} color="#FFFFFF" />
+                <Text style={styles.submitBtnText}>Exit Review</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.navBtn, styles.navBtnNext]}
+                onPress={goNext}
+              >
+                <Text style={[styles.navBtnText, { color: "#FFFFFF" }]}>Next</Text>
+                <Feather name="arrow-right" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            )
           ) : (
-            <TouchableOpacity
-              style={[styles.navBtn, styles.navBtnNext, !hasAnswered && styles.navBtnDisabled]}
-              onPress={goNext}
-              disabled={!hasAnswered}
-            >
-              <Text style={[styles.navBtnText, { color: "#FFFFFF" }]}>Next</Text>
-              <Feather name="arrow-right" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
+            // Quiz taking navigation controls
+            currentQ === totalQ - 1 ? (
+              <TouchableOpacity
+                style={[styles.submitBtn, !allAnswered && { opacity: 0.5 }]}
+                onPress={handleSubmit}
+                disabled={!allAnswered || submitting}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Feather name="send" size={16} color="#FFFFFF" />
+                    <Text style={styles.submitBtnText}>Submit</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.navBtn, styles.navBtnNext, !hasAnswered && styles.navBtnDisabled]}
+                onPress={goNext}
+                disabled={!hasAnswered}
+              >
+                <Text style={[styles.navBtnText, { color: "#FFFFFF" }]}>Next</Text>
+                <Feather name="arrow-right" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            )
           )}
         </View>
 
         <View style={styles.dotRow}>
-          {section.quiz.map((_, i) => (
-            <TouchableOpacity key={i} onPress={() => setCurrentQ(i)}>
-              <View
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor:
-                      answers[i] !== null
-                        ? answers[i] === section.quiz[i].correctIndex
-                          ? colors.success
-                          : colors.destructive
-                        : i === currentQ
-                        ? section.color
-                        : colors.muted,
-                  },
-                ]}
-              />
-            </TouchableOpacity>
-          ))}
+          {section.quiz.map((_, i) => {
+            const isDotAnswered = answers[i] !== null;
+            const isDotCorrect = isDotAnswered && answers[i] === section.quiz[i].correctIndex;
+
+            let dotColor = colors.muted;
+            if (phase === "review") {
+              dotColor = isDotCorrect ? colors.success : colors.destructive;
+            } else {
+              if (i === currentQ) {
+                dotColor = section.color;
+              } else if (isDotAnswered) {
+                dotColor = section.color + "70";
+              }
+            }
+
+            return (
+              <TouchableOpacity key={i} onPress={() => setCurrentQ(i)}>
+                <View
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor: dotColor,
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
