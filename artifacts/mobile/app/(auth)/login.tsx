@@ -39,7 +39,9 @@ export default function LoginScreen() {
     setLoading(false);
     if (result.success) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace("/(app)/(tabs)/home");
+      if (result.role !== "admin") {
+        router.replace("/(app)/(tabs)/home");
+      }
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setError(result.error ?? "Login failed.");

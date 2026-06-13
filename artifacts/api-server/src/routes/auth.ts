@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db } from "@workspace/db";
-import { studentsTable } from "@workspace/db";
+import { studentsTable, adminsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken } from "../lib/jwt";
 import { RegisterStudentBody, LoginStudentBody } from "@workspace/api-zod";
@@ -60,34 +60,62 @@ router.post("/auth/login", async (req, res) => {
   const { email, password } = parse.data;
 
   try {
+    // 1. Check if user is a student
     const [student] = await db
       .select()
       .from(studentsTable)
       .where(eq(studentsTable.email, email.toLowerCase()))
       .limit(1);
 
-    if (!student) {
-      res.status(401).json({ error: "No account found with this email." });
+    if (student) {
+      const valid = await bcrypt.compare(password, student.passwordHash);
+      if (!valid) {
+        res.status(401).json({ error: "Incorrect password." });
+        return;
+      }
+
+      const token = signToken({ id: student.id, role: "student" });
+      res.json({
+        token,
+        role: "student",
+        student: {
+          id: student.id,
+          name: student.name,
+          email: student.email,
+          studentId: student.studentId,
+          createdAt: student.createdAt.toISOString(),
+        },
+      });
       return;
     }
 
-    const valid = await bcrypt.compare(password, student.passwordHash);
-    if (!valid) {
-      res.status(401).json({ error: "Incorrect password." });
+    // 2. Check if user is an admin
+    const [admin] = await db
+      .select()
+      .from(adminsTable)
+      .where(eq(adminsTable.email, email.toLowerCase()))
+      .limit(1);
+
+    if (admin) {
+      const valid = await bcrypt.compare(password, admin.passwordHash);
+      if (!valid) {
+        res.status(401).json({ error: "Incorrect password." });
+        return;
+      }
+
+      const token = signToken({ id: admin.id, role: "admin" });
+      res.json({
+        token,
+        role: "admin",
+        admin: {
+          id: admin.id,
+          email: admin.email,
+        },
+      });
       return;
     }
 
-    const token = signToken({ id: student.id, role: "student" });
-    res.json({
-      token,
-      student: {
-        id: student.id,
-        name: student.name,
-        email: student.email,
-        studentId: student.studentId,
-        createdAt: student.createdAt.toISOString(),
-      },
-    });
+    res.status(401).json({ error: "No account found with this email." });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

@@ -56,7 +56,8 @@ export interface Progress {
 
 export interface AuthPayload {
   token: string;
-  student: Student;
+  role?: "student" | "admin";
+  student?: Student;
 }
 
 export function apiRegister(

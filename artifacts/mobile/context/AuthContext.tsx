@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { apiLogin, apiRegister } from "@/services/api";
 
 export interface User {
@@ -14,7 +15,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   signup: (
     name: string,
     email: string,
@@ -64,10 +65,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
   }
 
-  async function login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async function login(email: string, password: string): Promise<{ success: boolean; error?: string; role?: string }> {
     const result = await apiLogin(email, password);
     if ("error" in result && result.error) return { success: false, error: result.error };
     if (!("data" in result) || !result.data) return { success: false, error: "Login failed" };
+
+    if (result.data.role === "admin") {
+      if (Platform.OS === "web") {
+        let adminUrl = "/admin/";
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+          adminUrl = "http://localhost:5173/admin/";
+        } else if (process.env.EXPO_PUBLIC_ADMIN_URL) {
+          adminUrl = process.env.EXPO_PUBLIC_ADMIN_URL;
+        }
+        window.location.href = `${adminUrl}${adminUrl.endsWith("/") ? "" : "/"}?token=${result.data.token}`;
+      }
+      return { success: true, role: "admin" };
+    }
+
+    if (!result.data.student) {
+      return { success: false, error: "Student account details not returned." };
+    }
+
     const u: User = {
       id: String(result.data.student.id),
       name: result.data.student.name,
@@ -76,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       joinedAt: result.data.student.createdAt,
     };
     await saveSession(result.data.token, u);
-    return { success: true };
+    return { success: true, role: "student" };
   }
 
   async function signup(

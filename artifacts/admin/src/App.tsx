@@ -7,8 +7,18 @@ import { useEffect } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import Layout from "@/components/layout";
 
+// Synchronously process URL token if present (cross-origin login redirection)
+if (typeof window !== "undefined") {
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("token");
+  if (urlToken) {
+    localStorage.setItem("admin_token", urlToken);
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+}
+
 // Pages
-import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Students from "@/pages/students";
 import StudentDetail from "@/pages/student-detail";
@@ -26,13 +36,14 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const [location, setLocation] = useLocation();
-
   useEffect(() => {
     if (!isAuthenticated()) {
-      setLocation("/login");
+      const studentUrl = window.location.origin.includes("localhost")
+        ? "http://localhost:8081"
+        : "/";
+      window.location.href = studentUrl;
     }
-  }, [location, setLocation]);
+  }, []);
 
   if (!isAuthenticated()) return null;
 
@@ -47,15 +58,21 @@ function Router() {
   const [location, setLocation] = useLocation();
 
   useEffect(() => {
-    // Redirect root to dashboard if logged in, else login
-    if (location === "/") {
-      setLocation(isAuthenticated() ? "/dashboard" : "/login");
+    // Redirect root/login to dashboard if logged in, else redirect to student app
+    if (location === "/" || location === "/login") {
+      if (isAuthenticated()) {
+        setLocation("/dashboard");
+      } else {
+        const studentUrl = window.location.origin.includes("localhost")
+          ? "http://localhost:8081"
+          : "/";
+        window.location.href = studentUrl;
+      }
     }
   }, [location, setLocation]);
 
   return (
     <Switch>
-      <Route path="/login" component={Login} />
       <Route path="/dashboard">
         <ProtectedRoute component={Dashboard} />
       </Route>
