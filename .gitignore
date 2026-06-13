@@ -3,6 +3,7 @@
 # compiled output
 dist
 !artifacts/api-server/dist
+!artifacts/mobile/dist
 tmp
 out-tsc
 *.tsbuildinfo
@@ -45,6 +46,12 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Replit / pnpm local store
 .cache/
 .local/
+
+# Sensitive / large files – never commit
+.env
+artifacts/uploads/
+artifacts/admin/test-video.mp4
+scratch_check_videos.js

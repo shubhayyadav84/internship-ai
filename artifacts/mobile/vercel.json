@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "installCommand": "echo skip",
+  "buildCommand": "echo skip",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api-server-git-main-shubhayyadav84-5938s-projects.vercel.app/api/:path*"
+    },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/(.*)", "destination": "/admin/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
